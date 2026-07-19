@@ -1,0 +1,42 @@
+[
+  {
+    "stage": 1,
+    "model": "openai/gpt-4o",
+    "n": 20,
+    "pos": 2,
+    "online_auroc": 0.4166666666666667,
+    "seen": 20
+  },
+  {
+    "stage": 2,
+    "model": "openrouter/google/gemini-2.5-pro",
+    "n": 30,
+    "pos": 0,
+    "online_auroc": null,
+    "seen": 50
+  },
+  {
+    "stage": 3,
+    "model": "openrouter/google/gemini-2.5-flash",
+    "n": 21,
+    "pos": 0,
+    "online_auroc": null,
+    "seen": 71
+  },
+  {
+    "stage": 4,
+    "model": "openai/anthropic/claude-sonnet-4",
+    "n": 27,
+    "pos": 3,
+    "online_auroc": 0.5833333333333334,
+    "seen": 98
+  },
+  {
+    "stage": 7,
+    "model": "openai/deepseek-chat",
+    "n": 62,
+    "pos": 25,
+    "online_auroc": 0.5664864864864865,
+    "seen": 160
+  }
+]

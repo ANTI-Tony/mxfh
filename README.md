@@ -40,22 +40,26 @@ cp .env.example .env.local            # 编辑填入 OPENROUTER_KEY
 #    模型列表在 scripts/run_multimodel.sh 顶部,可增删
 bash scripts/run_multimodel.sh
 
-# 4a. 【核心】持久累积在线学习:一个门控,按固定顺序流过所有模型,跨模型累积更新,
-#     每阶段存 checkpoint(可复现)。见的反馈越多越准。国外强模型先、国产后。
-python scripts/run_online_stream.py            # -> models/stream/gate_after_stage*.pt
+# 4a. 【核心】在线持续更新:就一个门控模型,按固定顺序流过所有模型的 rollout,
+#     每验证一条(或 --update-every 10/20 条)就原地更新它的权重,跨模型不重置、
+#     一直累积。见的反馈越多越准。国外强模型先、国产后。全程只有一个模型。
+python scripts/run_online_stream.py            # -> models/gate_online.pt(那一个持续更新后的模型)
+# python scripts/run_online_stream.py --update-every 10   # 攒10条更新一次
 
 # 4b. 三张表(门控AUROC / 时间 / 金额)—— 加载固定门控 models/gate.pt(静态基线)
 python scripts/build_gen_tables.py
 ```
 
-## ⚠️ 关键:门控是持久累积的,不是每个模型独立评估
-`run_online_stream.py` 用**一个持久门控实例**,从 `models/gate.pt`(Sonnet 训练)出发,
-按顺序流过每个模型的 rollout,**编码器冻结、头逐条 1 步 SGD 在线更新且不重置** ——
-它在模型 A 上更新完的状态**带着**去跑模型 B……跨模型累积。**每跑完一个模型存一个
-checkpoint**(`models/stream/`),整条学习轨迹可复现。这是"一个模型、边用边更新、
-用得越久越好",不是"现训现用"。
+## ⚠️ 关键:全程就一个模型,一直原地更新它,不是每个模型独立、也不存分阶段 checkpoint
+`run_online_stream.py` 用**一个门控模型**,从 `models/gate.pt`(Sonnet 训练)出发,
+按顺序流过每个模型的 rollout,**编码器冻结、头每验证一条(或攒 `--update-every` 条)就
+原地更新一次、不重置** —— 它在模型 A 上更新完的权重**带着**去跑模型 B……跨模型累积。
+**从头到尾只有这一个模型**,跑完存成 `models/gate_online.pt`(那一个持续更新后的当前
+状态),**不分阶段另存 checkpoint**。这是"一个模型、边用边更新、用得越久越好",不是
+"现训现用"、也不是"每个模型各存一个"。
 
-> 注:这是对**已采集 rollout** 的确定性离线重放,几秒完成,不需要重跑昂贵的模型调用。
+> 复现:初始 `gate.pt`(`train_gate.py` 确定性生成) + 本脚本确定性重放这条流 → 同一个在线模型。
+> 这是对**已采集 rollout** 的确定性离线重放,几秒完成,不需要重跑昂贵的模型调用。
 > 前提是各模型的 rollout 里有**足够的成功样本**(正负都有)——若某模型近乎全失败
 > (可能是 agent 脚手架不适配该模型),它的反馈信息量低,累积效果会打折。
 
