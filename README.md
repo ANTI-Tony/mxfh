@@ -40,8 +40,17 @@ cp .env.example .env.local            # 编辑填入 OPENROUTER_KEY
 #    模型列表在 scripts/run_multimodel.sh 顶部,可增删
 bash scripts/run_multimodel.sh
 
-# 4. 出三张表(门控AUROC / 时间 / 金额)
+# 4. 出三张表(门控AUROC / 时间 / 金额)—— 加载固定门控 models/gate.pt,不现训
 python scripts/build_gen_tables.py
+```
+
+## 门控是一个固定的 checkpoint(不现训现用)
+门控**已训练好并存在仓库里**:`models/gate.pt`(权重) + `models/scaler.npz`(标准化) + `models/gate_meta.json`(元信息)。
+所有模型的评估都**加载这同一个固定门控**,保证可比、可复现。无需重训。
+
+如需**重新训练**(例如换了基座数据):
+```bash
+python scripts/train_gate.py     # 在 data/runs.jsonl 的 Sonnet 数据上训练,seed=0 确定性,覆盖 models/gate.pt
 ```
 
 单独跑某个模型:

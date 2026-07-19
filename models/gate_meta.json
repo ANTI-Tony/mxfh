@@ -1,0 +1,10 @@
+{
+  "base_model": "claude-sonnet-4.6",
+  "feat_dim": 776,
+  "arch": "776-256-128-64-1, ReLU+Dropout(0.3), BCEWithLogitsLoss(pos_weight=neg/pos), Adam lr=1e-3, full-batch, early-stop patience 15, seed 0",
+  "n_train": 289,
+  "n_pos": 94,
+  "n_neg": 195,
+  "final_train_loss": 0.012093235738575459,
+  "note": "门控输入不含执行模型身份,可零样本套到任意执行模型预测 P(reward>0)。"
+}
