@@ -50,6 +50,47 @@ python scripts/run_online_stream.py            # -> models/gate_online.pt(那一
 python scripts/build_gen_tables.py
 ```
 
+## 🚀 给朋友:跑更多样本(最重要)
+
+`data/runs.jsonl` 里**已含我们跑过的所有数据**(Sonnet 基座 289 对 + DeepSeek 62 / gpt-4o 20 /
+gemini 51 / claude-sonnet-4 27 / glm-4.6 17 / qwen3-max 2 / kimi-k2 2)。脚本**可断点续跑**:
+已有**干净结果**的 (model, query, bundle) 会自动 `[skip]`,**只跑缺的**——你不会重复跑已完成的。
+
+```bash
+cd mxfh
+pip install -r requirements.txt && uv tool install harbor && bash patches/patch_harbor.sh
+cp .env.example .env.local        # 填 OPENROUTER_KEY
+
+# 网络慢(pip 下重包超时导致 harbor RuntimeError)才需要,网络好可跳过:
+bash patches/patch_pip_mirror.sh  # 给任务 Dockerfile 加国内镜像
+
+# 【跑更多样本】22 个 bundle-sensitive query × 4 bundle,把 glm/qwen/kimi 补满 88 对:
+bash scripts/run_full_eval.sh     # 串行、续跑、余额<$2自停;失败的对重跑会自动重试
+```
+
+**想跑得更多 / 更广**,任选:
+- **补满现有 3 个模型**:直接重跑 `run_full_eval.sh`(它只跑缺的对,失败的会重试)。
+- **加新模型**:编辑 `scripts/run_full_eval.sh` 顶部的 `RUN=(...)`,加 OpenRouter 型号
+  (如 `meta-llama/llama-4-maverick` `mistralai/mistral-large` `google/gemini-2.5-pro`)。
+- **跑更多 query**(超出这 22 个敏感集):用 `run_gpt_replay` 直接指定:
+  ```bash
+  sed 's|model: openrouter/google/gemini-2.5-flash|model: openrouter/qwen/qwen3-max|' \
+      configs/experiment_or.yaml > configs/q.yaml
+  python -m scripts.run_gpt_replay --config configs/q.yaml \
+      --tasks auto:40 --bundle-types gos_original,delete_top,add_irrelevant,replace_similar
+  #        ↑ auto:N = 自动选 N 个 Sonnet 下有干净 bundle 的 query
+  ```
+
+**跑完把数据(`data/runs.jsonl`)回传给我**,或直接在本仓库刷新结果:
+```bash
+python scripts/run_online_stream.py   # 刷新那一个在线模型 models/gate_online.pt
+python scripts/build_gen_tables.py    # 刷新三表(门控AUROC / 时间 / 金额)
+```
+
+> **目标**:目前只有 DeepSeek(62 对、25 正)样本足、门控 AUROC 0.733 可靠。其余模型样本太少
+> (glm 17、qwen/kimi 各 2)或任务全失败(gemini/gpt),AUROC 还不可信。**需要把 glm/qwen/kimi
+> 补到 88 对(各有足够正负样本),才能证明门控"跨多个模型"泛化。** 每个模型约 $10-50。
+
 ## ⚠️ 关键:全程就一个模型,一直原地更新它,不是每个模型独立、也不存分阶段 checkpoint
 `run_online_stream.py` 用**一个门控模型**,从 `models/gate.pt`(Sonnet 训练)出发,
 按顺序流过每个模型的 rollout,**编码器冻结、头每验证一条(或攒 `--update-every` 条)就
