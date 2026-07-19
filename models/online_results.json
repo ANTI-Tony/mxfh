@@ -38,5 +38,29 @@
     "pos": 25,
     "online_auroc": 0.5664864864864865,
     "seen": 160
+  },
+  {
+    "stage": 8,
+    "model": "openrouter/qwen/qwen3-max",
+    "n": 2,
+    "pos": 1,
+    "online_auroc": 0.0,
+    "seen": 162
+  },
+  {
+    "stage": 9,
+    "model": "openrouter/z-ai/glm-4.6",
+    "n": 12,
+    "pos": 2,
+    "online_auroc": 0.3,
+    "seen": 174
+  },
+  {
+    "stage": 10,
+    "model": "openrouter/moonshotai/kimi-k2",
+    "n": 2,
+    "pos": 2,
+    "online_auroc": null,
+    "seen": 176
   }
 ]
