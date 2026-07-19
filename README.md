@@ -64,21 +64,31 @@ cp .env.example .env.local        # 填 OPENROUTER_KEY
 # 网络慢(pip 下重包超时导致 harbor RuntimeError)才需要,网络好可跳过:
 bash patches/patch_pip_mirror.sh  # 给任务 Dockerfile 加国内镜像
 
-# 【跑更多样本】22 个 bundle-sensitive query × 4 bundle,把 glm/qwen/kimi 补满 88 对:
+# 【跑更多样本】只在 Sonnet reward>0 的 94 个对上跑(见下"选样原则"):
 bash scripts/run_full_eval.sh     # 串行、续跑、余额<$2自停;失败的对重跑会自动重试
 ```
+
+### ⭐ 选样原则(重要,导师要求)
+**别随便选 query 跑。先在 GoS(Sonnet)数据里挑 `reward>0` 的 (query,bundle) 对,只跑那些。**
+随便选一批,大多是 `reward=0`(任务本身难解),别的模型跑了也是 0 —— **白烧钱、没信号**。
+数据实证:模型在【Sonnet 成功的对】上成功率远高于【Sonnet 失败的对】(DeepSeek 53% vs 23%,
+claude 25% vs **0%**,gemini 两边全 0)。而且只跑正类对,模型自己**照样有成有败**
+(DeepSeek 19 成/17 败)→ 门控 AUROC 依然算得出(0.647)。所以脚本用
+`--tasks all-positive --only-positive`:自动选出全部 **94 个 Sonnet 正类对**来跑。
 
 **想跑得更多 / 更广**,任选:
 - **补满现有 3 个模型**:直接重跑 `run_full_eval.sh`(它只跑缺的对,失败的会重试)。
 - **加新模型**:编辑 `scripts/run_full_eval.sh` 顶部的 `RUN=(...)`,加 OpenRouter 型号
   (如 `meta-llama/llama-4-maverick` `mistralai/mistral-large` `google/gemini-2.5-pro`)。
-- **跑更多 query**(超出这 22 个敏感集):用 `run_gpt_replay` 直接指定:
+- **手动指定跑法**:用 `run_gpt_replay` 直接跑:
   ```bash
   sed 's|model: openrouter/google/gemini-2.5-flash|model: openrouter/qwen/qwen3-max|' \
       configs/experiment_or.yaml > configs/q.yaml
+  # 推荐(导师选样):只跑 Sonnet reward>0 的 94 个对
+  python -m scripts.run_gpt_replay --config configs/q.yaml --tasks all-positive --only-positive
+  # 或指定 query(仍建议加 --only-positive 只跑其正类 bundle):
   python -m scripts.run_gpt_replay --config configs/q.yaml \
-      --tasks auto:40 --bundle-types gos_original,delete_top,add_irrelevant,replace_similar
-  #        ↑ auto:N = 自动选 N 个 Sonnet 下有干净 bundle 的 query
+      --tasks data-to-d3,fix-erlang-ssh-cve --only-positive
   ```
 
 **跑完把数据(`data/runs.jsonl`)回传给我**,或直接在本仓库刷新结果:

@@ -1,7 +1,8 @@
 #!/bin/bash
-# 全量跨模型评估:在 22 个 bundle-sensitive query × 4 bundle = 88 对上,
-# 换模型重跑 Sonnet 检索出的同一 bundle(公平对比)。可断点续跑(自动跳过已完成对)。
-# 按成本从低到高:glm -> qwen -> kimi(若余额耗尽,便宜的先跑完)。带余额守卫。
+# 跨模型评估(老师建议的选样):只在【Sonnet reward>0 的 (query,bundle) 对】上换模型重跑
+# (--tasks all-positive --only-positive)。原因:随便选大多 reward=0,别的模型也失败,
+# 白烧钱、无信号;先选 Sonnet 成功的对,模型才有正类,门控 AUROC 才算得出。
+# 可断点续跑(自动跳过已完成对)。成本从低到高:glm -> qwen -> kimi。带余额守卫。
 set -u
 cd /Users/tonygpt/Desktop/gos-sanity-release
 source .env.local 2>/dev/null; export OPENROUTER_KEY
@@ -25,7 +26,7 @@ for m in "${RUN[@]}"; do
   short=$(echo "$m" | sed 's#.*/##')
   sed "s|model: openrouter/google/gemini-2.5-flash|model: openrouter/$m|" configs/experiment_or.yaml > configs/experiment_$short.yaml
   .venv/bin/python -m scripts.run_gpt_replay --config configs/experiment_$short.yaml \
-      --tasks "$SENS" --bundle-types "$BUNDLES" 2>&1 | tail -4
+      --tasks all-positive --only-positive 2>&1 | tail -4
   echo "===== $m 完成 $(date +%H:%M) 余额 \$$(bal) ====="
 done
 echo "FULL_DONE 余额 \$$(bal)"

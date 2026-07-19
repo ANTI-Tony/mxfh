@@ -27,9 +27,12 @@ def _err(r): v=r.get("error_type"); return v if v is not None else r.get("error"
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/experiment_gpt.yaml")
-    ap.add_argument("--tasks", required=True, help="逗号分隔的 query_id; 或 'auto:N' 自动选N个Sonnet下有信号的")
+    ap.add_argument("--tasks", required=True, help="逗号分隔的 query_id; 'auto:N' 自动选N个有信号的; 'all-positive' 选所有含 Sonnet reward>0 bundle 的 query")
     ap.add_argument("--bundle-types", default=",".join(B_ALL))
     ap.add_argument("--src-model", default="claude-sonnet-4.6", help="复用哪个模型跑过的bundle")
+    ap.add_argument("--only-positive", action="store_true",
+                    help="只跑 Sonnet reward>0 的(query,bundle)对。老师建议:先在GoS里选reward>0的样本再跑,"
+                         "别随便选(随便选大多reward=0,别的模型也失败,白烧钱、无信号)。")
     a = ap.parse_args()
 
     cfg = yaml.safe_load(Path(a.config).read_text())
@@ -50,6 +53,10 @@ def main():
         # 优先选 Sonnet 下 4bundle reward 有差异(有信号)的
         sig = [q for q in comp if len({latest[(q,b)]["reward"] for b in B_ALL}) > 1]
         tasks = (sig + [q for q in comp if q not in sig])[:n]
+    elif a.tasks == "all-positive":
+        # 老师建议:所有【含 Sonnet reward>0 bundle】的 query(配合 --only-positive 只跑那些正类对)
+        tasks = sorted({q for (q, b), r in latest.items()
+                        if _err(r) is None and (r.get("reward") or 0) > 0})
     else:
         tasks = [t.strip() for t in a.tasks.split(",") if t.strip()]
 
@@ -67,6 +74,8 @@ def main():
                 print(f"[skip] {q} {b} 已有 {cfg['agent']['model']} 结果"); continue
             if not clean(q, b):
                 print(f"[skip] {q} {b}: Sonnet 无干净 bundle 可复用"); continue
+            if a.only_positive and not ((latest[(q, b)].get("reward") or 0) > 0):
+                print(f"[skip] {q} {b}: Sonnet reward=0(--only-positive 只跑正类对)"); continue
             src_r = latest[(q, b)]
             skill_ids = src_r["skill_ids"]
             ppr_list = src_r.get("ppr_scores") or []
