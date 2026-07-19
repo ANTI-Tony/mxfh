@@ -40,9 +40,24 @@ cp .env.example .env.local            # 编辑填入 OPENROUTER_KEY
 #    模型列表在 scripts/run_multimodel.sh 顶部,可增删
 bash scripts/run_multimodel.sh
 
-# 4. 出三张表(门控AUROC / 时间 / 金额)—— 加载固定门控 models/gate.pt,不现训
+# 4a. 【核心】持久累积在线学习:一个门控,按固定顺序流过所有模型,跨模型累积更新,
+#     每阶段存 checkpoint(可复现)。见的反馈越多越准。国外强模型先、国产后。
+python scripts/run_online_stream.py            # -> models/stream/gate_after_stage*.pt
+
+# 4b. 三张表(门控AUROC / 时间 / 金额)—— 加载固定门控 models/gate.pt(静态基线)
 python scripts/build_gen_tables.py
 ```
+
+## ⚠️ 关键:门控是持久累积的,不是每个模型独立评估
+`run_online_stream.py` 用**一个持久门控实例**,从 `models/gate.pt`(Sonnet 训练)出发,
+按顺序流过每个模型的 rollout,**编码器冻结、头逐条 1 步 SGD 在线更新且不重置** ——
+它在模型 A 上更新完的状态**带着**去跑模型 B……跨模型累积。**每跑完一个模型存一个
+checkpoint**(`models/stream/`),整条学习轨迹可复现。这是"一个模型、边用边更新、
+用得越久越好",不是"现训现用"。
+
+> 注:这是对**已采集 rollout** 的确定性离线重放,几秒完成,不需要重跑昂贵的模型调用。
+> 前提是各模型的 rollout 里有**足够的成功样本**(正负都有)——若某模型近乎全失败
+> (可能是 agent 脚手架不适配该模型),它的反馈信息量低,累积效果会打折。
 
 ## 门控是一个固定的 checkpoint(不现训现用)
 门控**已训练好并存在仓库里**:`models/gate.pt`(权重) + `models/scaler.npz`(标准化) + `models/gate_meta.json`(元信息)。
