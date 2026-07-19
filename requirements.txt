@@ -1,0 +1,4 @@
+numpy
+torch
+pyyaml
+# 仅当需要重新生成 embedding 时:sentence-transformers

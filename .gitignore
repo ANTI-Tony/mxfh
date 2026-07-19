@@ -1,0 +1,6 @@
+.env.local
+logs/
+__pycache__/
+*.pyc
+.DS_Store
+data/harbor_jobs/

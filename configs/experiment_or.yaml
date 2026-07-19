@@ -1,0 +1,22 @@
+agent:
+  backend: vllm            # 通用 OpenAI 兼容 chat，走 harbor mini-swe-agent
+  model: openrouter/google/gemini-2.5-flash
+  base_url: https://openrouter.ai/api/v1
+  key_var: OPENROUTER_KEY
+  harbor_timeout_multiplier: 5
+  timeout_s: 3600
+paths:
+  gos_repo: ../graph-of-skills
+  gos_workspace: ../graph-of-skills/data/gos_workspace/skills_200_v1
+  results_dir: data
+  skills_library: ../graph-of-skills/data/skillsets/skills_200
+  skillsbench_tasks: ../graph-of-skills/evaluation/skillsbench/tasks
+perturbations:
+  add_irrelevant_cosine_max: 0.2
+  replace_similar_rho_epsilon: 0.05
+queries:
+  count: 30
+  selection_seed: 20260430
+retrieval:
+  max_context_chars: 32000
+  top_n: 8
