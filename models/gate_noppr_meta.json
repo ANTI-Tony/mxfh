@@ -1,0 +1,10 @@
+{
+  "base_model": "claude-sonnet-4.6",
+  "feat_dim": 776,
+  "ppr": "zeroed (retrieval-agnostic)",
+  "n_train": 289,
+  "n_pos": 94,
+  "n_neg": 195,
+  "final_train_loss": 0.01026527676731348,
+  "note": "去PPR门控,用于非GoS检索器的检索器无关验证。"
+}
